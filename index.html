@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tetris Mobile avec Musique</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; background: #333; color: white; }
+        canvas { display: block; margin: 10px auto; background: black; }
+        .controls { display: flex; justify-content: center; gap: 10px; margin-top: 10px; }
+        button { padding: 15px 20px; font-size: 16px; border: none; border-radius: 8px; background: #007BFF; color: white; cursor: pointer; }
+        button:active { background: #0056b3; }
+        .icon { width: 24px; height: 24px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <h1>Tetris Mobile</h1>
+    <canvas id="gameCanvas" width="300" height="600"></canvas>
+    <div class="controls">
+        <button onclick="moveLeft()"><img src="https://cdn-icons-png.flaticon.com/512/271/271220.png" class="icon" alt="Left"></button>
+        <button onclick="rotatePiece()"><img src="https://cdn-icons-png.flaticon.com/512/545/545682.png" class="icon" alt="Rotate"></button>
+        <button onclick="moveRight()"><img src="https://cdn-icons-png.flaticon.com/512/271/271228.png" class="icon" alt="Right"></button>
+    </div>
+    <div class="controls">
+        <button onclick="moveDown()"><img src="https://cdn-icons-png.flaticon.com/512/271/271210.png" class="icon" alt="Down"></button>
+        <button onclick="restartGame()">🔁 Rejouer</button>
+    </div>
+    <p>Score : <span id="score">0</span></p>
+
+    <audio id="lineSound" src="https://www.myinstants.com/media/sounds/tetris-clear.mp3"></audio>
+    <audio id="music" src="https://archive.org/download/TetrisThemeMusic/Tetris.mp3" loop autoplay></audio>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const ROWS = 20, COLS = 10, SIZE = 30;
+        const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+        let score = 0, dropInterval = 500, lastTime = 0, dropCounter = 0;
+        const lineSound = document.getElementById('lineSound');
+        const music = document.getElementById('music');
+        music.play();
+
+        const PIECES = [
+            [[1, 1, 1, 1]],
+            [[1, 1], [1, 1]],
+            [[0, 1, 0], [1, 1, 1]],
+            [[1, 0, 0], [1, 1, 1]],
+            [[0, 0, 1], [1, 1, 1]],
+            [[1, 1, 0], [0, 1, 1]],
+            [[0, 1, 1], [1, 1, 0]]
+        ];
+
+        let piece, position;
+
+        function randomPiece() {
+            return PIECES[Math.floor(Math.random() * PIECES.length)];
+        }
+
+        function resetPiece() {
+            piece = randomPiece();
+            position = { x: 3, y: 0 };
+            if (collide()) {
+                alert('Game Over');
+                restartGame();
+            }
+        }
+
+        function drawBoard() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            board.forEach((row, y) => row.forEach((value, x) => value && drawSquare(x, y, 'cyan')));
+            piece.forEach((row, y) => row.forEach((value, x) => value && drawSquare(position.x + x, position.y + y, 'yellow')));
+        }
+
+        function drawSquare(x, y, color) {
+            ctx.fillStyle = color;
+            ctx.fillRect(x * SIZE, y * SIZE, SIZE, SIZE);
+            ctx.strokeStyle = '#333';
+            ctx.strokeRect(x * SIZE, y * SIZE, SIZE, SIZE);
+        }
+
+        function collide() {
+            return piece.some((row, y) => row.some((value, x) => value && (board[y + position.y]?.[x + position.x] !== 0 || y + position.y >= ROWS)));
+        }
+
+        function merge() {
+            piece.forEach((row, y) => row.forEach((value, x) => value && (board[position.y + y][position.x + x] = 1)));
+        }
+
+        function rotatePiece() {
+            const rotated = piece[0].map((_, i) => piece.map(row => row[i])).reverse();
+            const oldPiece = piece;
+            piece = rotated;
+            if (collide()) piece = oldPiece;
+        }
+
+        function moveLeft() { position.x--; if (collide()) position.x++; }
+        function moveRight() { position.x++; if (collide()) position.x--; }
+        function moveDown() {
+            position.y++;
+            if (collide()) {
+                position.y--;
+                merge();
+                resetPiece();
+                checkLines();
+            }
+        }
+
+        function checkLines() {
+            for (let y = ROWS - 1; y >= 0; y--) {
+                if (board[y].every(value => value !== 0)) {
+                    board.splice(y, 1);
+                    board.unshift(Array(COLS).fill(0));
+                    score += 10;
+                    lineSound.play();
+                    updateScore();
+                }
+            }
+        }
+
+        function updateScore() { document.getElementById('score').textContent = score; }
+
+        function restartGame() {
+            board.forEach(row => row.fill(0));
+            score = 0;
+            updateScore();
+            resetPiece();
+        }
+
+        function update(time = 0) {
+            const deltaTime = time - lastTime;
+            lastTime = time;
+            dropCounter += deltaTime;
+            if (dropCounter > dropInterval) {
+                moveDown();
+                dropCounter = 0;
+            }
+            drawBoard();
+            requestAnimationFrame(update);
+        }
+
+        resetPiece();
+        update();
+    </script>
+</body>
+</html>
