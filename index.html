@@ -2,25 +2,24 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris Mobile Responsive</title>
+    <title>Tetris Mobile Fullscreen</title>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            background: #111; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            font-family: Arial, sans-serif; 
+        body {
+            margin: 0;
+            padding: 0;
+            background: #111;
             color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
             overflow: hidden;
+            font-family: Arial, sans-serif;
         }
         canvas {
             background: black;
-            display: block;
-            max-width: 100%;
+            max-width: 90%;
             max-height: 80vh;
         }
         .controls {
@@ -42,11 +41,17 @@
             width: 24px;
             height: 24px;
         }
+        #startButton {
+            margin-bottom: 20px;
+            font-size: 24px;
+            padding: 15px 30px;
+        }
     </style>
 </head>
 <body>
 
 <h1>Tetris Mobile</h1>
+<button id="startButton">Démarrer le jeu</button>
 <canvas id="gameCanvas"></canvas>
 
 <div class="controls">
@@ -60,39 +65,33 @@
 </div>
 <p>Score : <span id="score">0</span></p>
 
+<audio id="music" src="https://archive.org/download/TetrisThemeMusic/Tetris.mp3" loop></audio>
 <audio id="lineSound" src="https://www.myinstants.com/media/sounds/tetris-clear.mp3"></audio>
 <audio id="rotateSound" src="https://www.myinstants.com/media/sounds/pop.mp3"></audio>
 <audio id="dropSound" src="https://www.myinstants.com/media/sounds/plop.mp3"></audio>
-<audio id="music" src="https://archive.org/download/TetrisThemeMusic/Tetris.mp3" loop></audio>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
-
-    const COLS = 10;
-    const ROWS = 20;
+    const music = document.getElementById('music');
+    const COLS = 10, ROWS = 20;
     let SIZE;
 
     function resizeCanvas() {
-        const maxWidth = Math.min(window.innerWidth, 400); // Limite la largeur max pour garder un bon ratio
-        const maxHeight = Math.min(window.innerHeight * 0.7, 800);
+        const maxWidth = Math.min(window.innerWidth * 0.9, 400);
         SIZE = Math.floor(maxWidth / COLS);
-
         canvas.width = SIZE * COLS;
         canvas.height = SIZE * ROWS;
     }
+
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
     const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     let score = 0, dropInterval = 500, lastTime = 0, dropCounter = 0;
-
     const lineSound = document.getElementById('lineSound');
     const rotateSound = document.getElementById('rotateSound');
     const dropSound = document.getElementById('dropSound');
-    const music = document.getElementById('music');
-
-    music.play(); // Joue la musique
 
     const PIECES = [
         [[1, 1, 1, 1]],
@@ -104,7 +103,15 @@
         [[0, 1, 1], [1, 1, 0]]
     ];
 
-    let piece, position;
+    let piece, position, gameRunning = false;
+
+    document.getElementById('startButton').addEventListener('click', () => {
+        document.getElementById('startButton').style.display = 'none';
+        music.play();
+        gameRunning = true;
+        resetPiece();
+        update();
+    });
 
     function randomPiece() {
         return PIECES[Math.floor(Math.random() * PIECES.length)];
@@ -168,21 +175,20 @@
                 board.unshift(Array(COLS).fill(0));
                 score += 10;
                 lineSound.play();
-                updateScore();
+                document.getElementById('score').textContent = score;
             }
         }
     }
 
-    function updateScore() { document.getElementById('score').textContent = score; }
-
     function restartGame() {
         board.forEach(row => row.fill(0));
         score = 0;
-        updateScore();
+        document.getElementById('score').textContent = score;
         resetPiece();
     }
 
     function update(time = 0) {
+        if (!gameRunning) return;
         const deltaTime = time - lastTime;
         lastTime = time;
         dropCounter += deltaTime;
@@ -193,9 +199,6 @@
         drawBoard();
         requestAnimationFrame(update);
     }
-
-    resetPiece();
-    update();
 </script>
 
 </body>
