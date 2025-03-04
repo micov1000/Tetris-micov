@@ -2,16 +2,14 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Cover Game - Tetris Trattoria Edition</title>
+    <title>Tetris Simple et Centré</title>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
 
+    <style>
         body {
             margin: 0;
             padding: 0;
-            background: url('https://www.toptal.com/designers/subtlepatterns/uploads/wood-pattern.png');
-            background-size: cover;
+            background-color: #111;
             color: white;
             font-family: Arial, sans-serif;
             display: flex;
@@ -22,88 +20,64 @@
             overflow: hidden;
         }
 
-        .neon-title {
-            font-family: 'Pacifico', cursive;
-            font-size: 42px;
-            color: #ff0;
-            text-shadow: 
-                0 0 5px #fff,
-                0 0 10px #ff0,
-                0 0 20px #ff0,
-                0 0 40px rgba(255, 255, 0, 0.6);
-            margin: 5px 0 10px;
-        }
-
         canvas {
             background: black;
-            border: 4px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 0 20px rgba(255, 255, 0, 0.9);
+            border: 3px solid white;
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
+        }
+
+        #startButton {
+            font-size: 20px;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
         }
 
         .controls {
             display: flex;
-            justify-content: center;
-            gap: 15px;
+            gap: 10px;
             margin-top: 10px;
         }
 
         button {
-            padding: 20px;
-            font-size: 22px;
-            border: none;
-            border-radius: 10px;
+            padding: 15px;
+            font-size: 18px;
             cursor: pointer;
-            background: #5a3e1b;
-            color: white;
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.5);
-        }
-
-        .move-btn {
-            background: #28a745;
-        }
-
-        .rotate-btn {
-            background: #007bff;
-        }
-
-        #startButton {
-            font-size: 22px;
-            padding: 15px 30px;
-            background: #ffcc00;
-            color: black;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(255, 204, 0, 0.8);
         }
     </style>
 </head>
 <body>
 
-<div class="neon-title">Cover Game</div>
-<button id="startButton">Démarrer le jeu</button>
+<h1>Tetris</h1>
 <canvas id="gameCanvas"></canvas>
 
 <div class="controls">
-    <button class="move-btn" onclick="moveLeft()">⬅️</button>
-    <button class="rotate-btn" onclick="rotatePiece()">⤾</button>
-    <button class="move-btn" onclick="moveRight()">➡️</button>
+    <button onclick="moveLeft()">⬅️</button>
+    <button onclick="rotatePiece()">⤾</button>
+    <button onclick="moveRight()">➡️</button>
 </div>
 <div class="controls">
-    <button class="move-btn" onclick="moveDown()">⬇️</button>
+    <button onclick="moveDown()">⬇️</button>
     <button onclick="restartGame()">Rejouer</button>
 </div>
 <p>Score : <span id="score">0</span></p>
+
+<button id="startButton" onclick="startGame()">Démarrer le jeu</button>
 
 <audio id="music" src="https://archive.org/download/TetrisThemeMusic/Tetris.mp3" loop></audio>
 
 <script>
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
+
     const COLS = 10, ROWS = 20;
     let SIZE;
+    let gameRunning = false;
 
     function resizeCanvas() {
         const maxWidth = Math.min(window.innerWidth * 0.9, 400);
-        SIZE = Math.floor(maxWidth / COLS);
+        const maxHeight = window.innerHeight * 0.7;
+        SIZE = Math.floor(Math.min(maxWidth / COLS, maxHeight / ROWS));
         canvas.width = SIZE * COLS;
         canvas.height = SIZE * ROWS;
     }
@@ -111,9 +85,8 @@
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
 
-    const colors = ['#ff5733', '#33ff57', '#3399ff', '#ff33f6', '#fff033', '#33fff5', '#ff6f33'];
     const board = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-    let score = 0, dropInterval = 500, lastTime = 0, dropCounter = 0;
+    let piece, position, score = 0;
 
     const PIECES = [
         [[1, 1, 1, 1]],
@@ -125,29 +98,28 @@
         [[0, 1, 1], [1, 1, 0]]
     ];
 
-    let piece, position, currentColor;
+    const colors = ['#ff5733', '#33ff57', '#3399ff', '#ff33f6', '#fff033', '#33fff5', '#ff6f33'];
 
-    document.getElementById('startButton').addEventListener('click', () => {
+    function startGame() {
         document.getElementById('startButton').style.display = 'none';
         document.getElementById('music').play();
+        gameRunning = true;
+        score = 0;
+        updateScore();
+        board.forEach(row => row.fill(0));
         resetPiece();
-        update();
-    });
+        requestAnimationFrame(update);
+    }
 
     function randomPiece() {
         return PIECES[Math.floor(Math.random() * PIECES.length)];
     }
 
-    function randomColor() {
-        return colors[Math.floor(Math.random() * colors.length)];
-    }
-
     function resetPiece() {
         piece = randomPiece();
-        position = { x: 3, y: 0 };
-        currentColor = randomColor();
+        position = { x: Math.floor(COLS / 2) - Math.floor(piece[0].length / 2), y: 0 };
         if (collide()) {
-            alert('Game Over');
+            alert('Game Over !');
             restartGame();
         }
     }
@@ -155,29 +127,28 @@
     function drawBoard() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         board.forEach((row, y) => row.forEach((value, x) => value && drawSquare(x, y, value)));
-        piece.forEach((row, y) => row.forEach((value, x) => value && drawSquare(position.x + x, position.y + y, currentColor)));
+        piece.forEach((row, y) => row.forEach((value, x) => value && drawSquare(position.x + x, position.y + y, value)));
     }
 
-    function drawSquare(x, y, color) {
-        ctx.fillStyle = color;
+    function drawSquare(x, y, value) {
+        ctx.fillStyle = colors[value - 1];
         ctx.fillRect(x * SIZE, y * SIZE, SIZE, SIZE);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(x * SIZE + 1, y * SIZE + 1, SIZE - 2, SIZE - 2);
-        ctx.shadowColor = color;
-        ctx.shadowBlur = 15;
+        ctx.strokeStyle = '#222';
+        ctx.strokeRect(x * SIZE, y * SIZE, SIZE, SIZE);
     }
 
     function collide() {
-        return piece.some((row, y) => row.some((value, x) =>
-            value && (board[y + position.y]?.[x + position.x] !== 0 || y + position.y >= ROWS)
-        ));
+        return piece.some((row, y) =>
+            row.some((value, x) => value && (board[y + position.y]?.[x + position.x] !== 0 || y + position.y >= ROWS))
+        );
     }
 
     function merge() {
-        piece.forEach((row, y) => row.forEach((value, x) => {
-            if (value) board[position.y + y][position.x + x] = currentColor;
-        }));
+        piece.forEach((row, y) =>
+            row.forEach((value, x) => {
+                if (value) board[y + position.y][x + position.x] = value;
+            })
+        );
     }
 
     function rotatePiece() {
@@ -205,24 +176,29 @@
                 board.splice(y, 1);
                 board.unshift(Array(COLS).fill(0));
                 score += 10;
-                document.getElementById('score').textContent = score;
+                updateScore();
             }
         }
     }
 
+    function updateScore() {
+        document.getElementById('score').innerText = score;
+    }
+
     function restartGame() {
-        location.reload();
+        document.getElementById('startButton').style.display = 'block';
+        gameRunning = false;
+        score = 0;
+        updateScore();
+        board.forEach(row => row.fill(0));
+        drawBoard();
     }
 
     function update(time = 0) {
-        dropCounter += time - lastTime;
-        lastTime = time;
-        if (dropCounter > dropInterval) {
-            moveDown();
-            dropCounter = 0;
-        }
+        if (!gameRunning) return;
+        moveDown();
         drawBoard();
-        requestAnimationFrame(update);
+        setTimeout(() => requestAnimationFrame(update), 500);
     }
 </script>
 
