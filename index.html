@@ -100,6 +100,9 @@
 
     const colors = ['#ff5733', '#33ff57', '#3399ff', '#ff33f6', '#fff033', '#33fff5', '#ff6f33'];
 
+    let dropCounter = 0;
+    let lastTime = 0;
+
     function startGame() {
         document.getElementById('startButton').style.display = 'none';
         document.getElementById('music').play();
@@ -116,7 +119,7 @@
     }
 
     function resetPiece() {
-        piece = randomPiece();
+        piece = randomPiece().map(row => row.map(value => value ? Math.floor(Math.random() * colors.length) + 1 : 0));
         position = { x: Math.floor(COLS / 2) - Math.floor(piece[0].length / 2), y: 0 };
         if (collide()) {
             alert('Game Over !');
@@ -196,9 +199,18 @@
 
     function update(time = 0) {
         if (!gameRunning) return;
-        moveDown();
+
+        const deltaTime = time - lastTime;
+        lastTime = time;
+        dropCounter += deltaTime;
+
+        if (dropCounter > 500) {  // Chute automatique toutes les 500ms
+            moveDown();
+            dropCounter = 0;
+        }
+
         drawBoard();
-        setTimeout(() => requestAnimationFrame(update), 500);
+        requestAnimationFrame(update);
     }
 </script>
 
